@@ -17,11 +17,13 @@ namespace ExcelToNewExcelsCreator
             string baseFilesDirectoryPath = GetPathToDirectory_Files() + @"\BaseFiles";
             string newFilesDirectoryPath = baseFilesDirectoryPath + @"\NewFiles";
 
-            //////////Program//////////
-            // 0. Ask User
+            //Check if files exist
+            string baseExcelFile = FindFileWithExtension(baseFilesDirectoryPath, "*.xlsx");
+            CheckFileName(baseExcelFile);
+
+            // Ask User
             Console.WriteLine("Write below how many new files create");
             int amountOfFiles = AskUserAboutAmount();
-
             if (amountOfFiles == 0)
             {
                 Console.WriteLine("You chose 0 new files");
@@ -32,15 +34,15 @@ namespace ExcelToNewExcelsCreator
             int carriersPerDay = AskUserAboutAmount();
             if (carriersPerDay == 0)
             {
-                Console.WriteLine("Zero? Are you made all of this in one day? Ok here we go");
+                Console.WriteLine("You chose zero, all files with same date");
             }
 
-            // 1. Create new directory for files
+            // Create new directory for files
             CreateNewDirectory(newFilesDirectoryPath);
+            string[] valuesR​readFromExcel = ReadValuesFromExcel(baseExcelFile);
 
 
-            // 3.      //amount of values (for set array) to read form file
-
+            //Od tąd kontynuować
             ChangingFiles(carriersPerDay, amountOfFiles, baseFilesDirectoryPath, newFilesDirectoryPath);
 
 
@@ -145,6 +147,7 @@ namespace ExcelToNewExcelsCreator
             
             if (path.Length == 0)
             {
+                Console.WriteLine("File not found, check directory:\n" + directoryPath);
                 CloseApp();
             }
             else
@@ -204,19 +207,98 @@ namespace ExcelToNewExcelsCreator
 
             return 0;
         }
+
+
+
+        ////Poważne zmiany od tąd////
+        static void CheckFileName(string baseExcelFile)
+        {
+            if (baseExcelFile != "")
+            {
+                string fileName =
+                    baseExcelFile.Substring(
+                    baseExcelFile.LastIndexOf(@"\") + 1,
+                    2);
+
+                string fileNumber =
+                    baseExcelFile.Substring(
+                    baseExcelFile.LastIndexOf(@"\") + 3,
+                    baseExcelFile.LastIndexOf("-") - (baseExcelFile.LastIndexOf(@"\") + 3));
+
+
+                if ("CA" == fileName.ToUpper())
+                {
+                    try
+                    {
+                        Int16.Parse(fileNumber);
+                    }
+                    catch
+                    {
+                        Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
+                        CloseApp();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
+                    CloseApp();
+                }
+            }
+            else
+            {
+                Console.WriteLine("Excel file not found");
+                CloseApp();
+            }
+        }
+        static string[] ReadValuesFromExcel(string excelFilesPath)
+        {
+            Queue<string> valuesFromExcel = new Queue<string>();
+            int[,] cellsPositionsXY = WitchCellsToChange();
+
+            //open excel file
+            var excelWorksheet = new ExcelPackage(excelFilesPath).Workbook.Worksheets[2];
+            for (int i = 0; i < cellsPositionsXY.Length / 2; i++)
+            {
+                valuesFromExcel.Enqueue(
+                    excelWorksheet.GetValue(cellsPositionsXY[i, 0], cellsPositionsXY[i, 1])
+                    .ToString()
+                    );
+            }
+            //close excel file
+            excelWorksheet.Dispose();
+
+            if (valuesFromExcel.Count != 4)
+            {
+                Console.WriteLine("Error: not enough values in excel file");
+                CloseApp();
+            }
+
+            return valuesFromExcel.ToArray();
+        }
+
+        //Od tąd kontynuować
+        static void PreaperingValuesForNewFiles(string[] valuesFromExcel, int amounOfNewExcelFiles)
+        {
+
+        }
         static void ChangingFiles(int carriersPerDay, int amountOfFiles, string directoryPath, string newDirectoryPath)
         {
             int[,] cellsPositionsXY = WitchCellsToChange();
-
+            string [] value = null; ;
             //Variable without values
-            int amountOfValues = cellsPositionsXY.Length / 2;
-            string[] value = new string[amountOfValues];    //amount of value to change
-
+            string[] valuesFromExcel = ReadValuesFromExcel(
+                FindFileWithExtension(directoryPath, "*.xlsx"));    //amount of value to change
+            int amountOfValues = valuesFromExcel.Length;
+            
+            
+            
             string filePath = FindFileWithExtension(directoryPath, "*.xlsx");   //bellow try for this variable
             string fileName = filePath.Substring(directoryPath.Length + 1);     //file name (cut path)
             string newFilePath = newDirectoryPath + $@"\{fileName}";             //coppy file in new directory
 
             // 1. Check file name
+            //
+            //Ważne sprawdzanie nazwy pliku pierwszego
             try
             {
                 fileName.Substring(fileName.IndexOf("-") - 1, fileName.Length - fileName.IndexOf("-") + 1);
