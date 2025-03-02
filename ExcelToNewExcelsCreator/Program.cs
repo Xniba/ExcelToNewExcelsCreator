@@ -1,16 +1,18 @@
 ﻿using OfficeOpenXml;
+using System.Diagnostics;
+using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace ExcelToNewExcelsCreator
 {
 
     internal class Program
     {
-        
         static void Main(string[] args)
         {
             //Package licence
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-            
+
             //Paths
             string baseFilesDirectoryPath = GetPathToDirectory_Files() + @"\BaseFiles";
             string newFilesDirectoryPath = baseFilesDirectoryPath + @"\NewFiles";
@@ -23,12 +25,7 @@ namespace ExcelToNewExcelsCreator
             if (amountOfFiles == 0)
             {
                 Console.WriteLine("You chose 0 new files");
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Then why are you bothering me");
-                Console.ResetColor();
-                Console.WriteLine("Press Enter to end...");
-                Console.ReadLine();
-                Environment.Exit(0);
+                CloseApp();
             }
 
             Console.WriteLine("Write below how many carriers per day");
@@ -56,118 +53,22 @@ namespace ExcelToNewExcelsCreator
 
             return;
         }
-
-        static int[,] WitchCellsToChange()
+        enum ColorEnumMessage
         {
-           int[,] cellPostitionXY = {
-                { 6, 3  },  //Device_number
-                { 7, 11 },  //IP (last octet) - Device_1
-                { 7, 13 },  //IP (last octet) - Device_2
-                { 6, 23 }   //Date
-            };
-
-            return cellPostitionXY;
+            yellow,
+            red,
         }
-
-        static void CreateNewDirectory(string newDirectoryPath)
-            {
-                //New directory for files
-                try
-                {
-                    if (Directory.Exists(newDirectoryPath))
-                    {
-                        Directory.Delete(newDirectoryPath, true); //true, give permision to delete directory and all content
-                        Directory.CreateDirectory(newDirectoryPath);
-                    }
-                    else
-                    {
-                        Directory.CreateDirectory(newDirectoryPath);
-                    }
-                }
-                catch
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Can't delete or create new directory");
-                    Console.WriteLine($"Close all files from directory: {newDirectoryPath}");
-                    Console.WriteLine($"Or give permission to write in: {newDirectoryPath.Substring(0, 35 - 10)}");
-                    Console.WriteLine("\nPress any key to close window");
-                    Console.ResetColor();
-                    Console.ReadKey();
-                    return;
-                }
-            }
-        static string FindFileWithExtension(string directoryPath, string extension)
+        static void ColoredMesage(ColorEnumMessage color, string message)
         {
-            string filePath = null;
 
-            try
+            switch (color)
             {
-                string [] path = Directory.GetFiles(directoryPath, extension);
-
-                for (int i = 0; i < path.Count(); i++)
-                {
-                    if ('~' != path[i][0]) //Checking if ther is temporary file"~"
-                    {
-                        filePath = path[i];
-                        break;
-                    }
-                }
-
-
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"Problem with method FindFileWithExtension, check directory " +
-                    $"\n{directoryPath}:");
-                Console.ResetColor();
-
-                CloseApp();
-            }
-            catch
-            {
-                Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine($"!Check if file with extension {extension} exist in directory: " +
-                    $"\n{directoryPath}");
-                Console.ResetColor ();
-
-                CloseApp("tekst", ErrorMessageClollor.yellow);
-            }
-
-            return filePath;
-        }
-        static string GetPathToDirectory_Files()
-        {
-            string path = new DirectoryInfo(".").FullName;
-            int ile = path.IndexOf("bin") - 1;
-            if (ile < 0)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Error in method - GetDirectoryPath()");
-                Console.ResetColor();
-                CloseApp();
-            }
-            else
-            {
-                path = path.Substring(0, ile);
-                path = path + @"\Files";
-            }
-            return path;
-        }
-        static void CloseApp()
-        {
-            Console.WriteLine("Press Enter to close app");
-            Console.ReadLine();
-            Environment.Exit(0);
-        }
-        static void CloseApp(string message, ErrorMessageClollor collor)
-        {
-            
-            switch(collor)
-            {
-                case ErrorMessageClollor.yellow:
+                case ColorEnumMessage.yellow:
 
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     break;
 
-                case ErrorMessageClollor.red:
+                case ColorEnumMessage.red:
 
                     Console.ForegroundColor = ConsoleColor.Red;
                     break;
@@ -180,40 +81,133 @@ namespace ExcelToNewExcelsCreator
 
             Console.WriteLine(message);
             Console.ResetColor();
-
-            Console.WriteLine("Press Enter to close app");
-            Console.ReadLine();
-            Environment.Exit(0);
         }
+        static int[,] WitchCellsToChange()
+        {
+            int[,] cellPostitionXY = {
+                { 6, 3  },  //Device_number
+                { 7, 11 },  //IP (last octet) - Device_1
+                { 7, 13 },  //IP (last octet) - Device_2
+                { 6, 23 }   //Date
+            };
 
-        enum ErrorMessageClollor
-        {
-            yellow,
-            red,
+            return cellPostitionXY;
         }
-        static int AskUserAboutAmount()
+        static void CreateNewDirectory(string newDirectoryPath)
         {
-            int value = 0;
-            Console.Write("Amount: ");
+            //New directory for files
             try
             {
-                value = Int32.Parse(Console.ReadLine());
+                if (Directory.Exists(newDirectoryPath))
+                {
+                    Directory.Delete(newDirectoryPath, true); //true, give permision to delete directory and all content
+                    Directory.CreateDirectory(newDirectoryPath);
+                }
+                else
+                {
+                    Directory.CreateDirectory(newDirectoryPath);
+                }
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Debug.WriteLine("Catch in CreateNewDirectory -> UnauthorizedAccessException");
+
+                Console.WriteLine("No permition to delete directory:\n" + newDirectoryPath);
+                CloseApp();
             }
             catch
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("!!!Error durring reading value from keyboard");
+                Console.WriteLine("Can't delete or create new directory");
+                Console.WriteLine($"Close all files from directory:\n + {newDirectoryPath}");
                 Console.ResetColor();
+
+                CloseApp();
+            }
+        }
+        static string FindFileWithExtension(string directoryPath, string extension)
+        {
+            string[] path = null;
+            try
+            {
+                path = Directory.GetFiles(directoryPath, extension);
+            }
+            catch (DirectoryNotFoundException ex)
+            {
+                Console.WriteLine("Directory not found:\n" + directoryPath);
+                CloseApp();
+            }
+            catch 
+            {
+                Console.WriteLine("Problems with found file with extension: " + extension);
+                CloseApp();
+            }
+            
+            if (path.Length == 0)
+            {
+                CloseApp();
+            }
+            else
+            {
+                for (int i = 0; i < path.Length; i++)
+                {
+                    if ('~' != path[i][0]) //Checking if ther is temporary file"~"
+                    {
+                        return path[i];
+                    }
+                }
+            }
+
+            return "";
+        }
+        static string GetPathToDirectory_Files()
+        {
+            string path = new DirectoryInfo(".").FullName;
+            int ile = path.IndexOf("bin") - 1;
+            if (ile < 0)
+            {
+                Console.WriteLine("Director not fount, please contact with your IT department");
+                CloseApp();
+            }
+            else
+            {
+                path = path.Substring(0, ile);
+                path = path + @"\Files";
+            }
+            return path;
+        }
+        static void CloseApp([CallerMemberName] string methodName = "")
+        {
+            Debug.WriteLine($"!!!There was a problem in method: {methodName}");
+
+            Console.WriteLine("\nPress Enter to close app");
+            Console.ReadKey();
+            Environment.Exit(0);
+        }
+        static int AskUserAboutAmount()
+        {
+            Console.Write("Amount: ");
+            try
+            {
+                return Int32.Parse(Console.ReadLine());
+            }
+            catch (FormatException)
+            {
+                ColoredMesage(ColorEnumMessage.yellow, "Error: not valid integer value");
+                CloseApp();
+            }
+            catch
+            {
+                ColoredMesage(ColorEnumMessage.red, "!!!Error durring reading value from keyboard");
                 CloseApp();
             }
 
-            return value;
+            return 0;
         }
-
-
         static void ChangingFiles(int carriersPerDay, int amountOfFiles, string directoryPath, string newDirectoryPath)
         {
             int[,] cellsPositionsXY = WitchCellsToChange();
+
             //Variable without values
             int amountOfValues = cellsPositionsXY.Length / 2;
             string[] value = new string[amountOfValues];    //amount of value to change
@@ -261,7 +255,7 @@ namespace ExcelToNewExcelsCreator
             //for (int i = 0; i < amountOfValues; i++)
             for (int i = 0; i < 4; i++)
             {
-                value[i] = ws.GetValue(cellsPositionsXY[i,0], cellsPositionsXY[i,1]).ToString();   //GetValue() - takes value form cell
+                value[i] = ws.GetValue(cellsPositionsXY[i, 0], cellsPositionsXY[i, 1]).ToString();   //GetValue() - takes value form cell
 
                 //value[0] = 0001;          //Device_number
                 //value[1] = 192;           //IP (last octet) - Device_1
