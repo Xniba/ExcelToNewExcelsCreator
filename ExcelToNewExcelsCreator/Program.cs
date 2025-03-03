@@ -159,6 +159,9 @@ namespace ExcelToNewExcelsCreator
                         return path[i];
                     }
                 }
+
+                Console.WriteLine("Valid file not found, check directory:\n" + directoryPath);
+                CloseApp();
             }
 
             return "";
@@ -213,42 +216,49 @@ namespace ExcelToNewExcelsCreator
         ////Poważne zmiany od tąd////
         static void CheckFileName(string baseExcelFile)
         {
-            if (baseExcelFile != "")
+            static void CloseWithComment() 
             {
-                string fileName =
-                    baseExcelFile.Substring(
-                    baseExcelFile.LastIndexOf(@"\") + 1,
-                    2);
-
-                string fileNumber =
-                    baseExcelFile.Substring(
-                    baseExcelFile.LastIndexOf(@"\") + 3,
-                    baseExcelFile.LastIndexOf("-") - (baseExcelFile.LastIndexOf(@"\") + 3));
-
-
-                if ("CA" == fileName.ToUpper())
-                {
-                    try
-                    {
-                        Int16.Parse(fileNumber);
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
-                        CloseApp();
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
-                    CloseApp();
-                }
+                Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
+                CloseApp();
             }
-            else
+
+            if (baseExcelFile == "")
             {
                 Console.WriteLine("Excel file not found");
                 CloseApp();
             }
+
+            string fileName =
+                baseExcelFile.Substring(
+                baseExcelFile.LastIndexOf(@"\") + 1,
+                2);
+
+            string fileNumber =
+                baseExcelFile.Substring(
+                baseExcelFile.LastIndexOf(@"\") + 3,
+                baseExcelFile.LastIndexOf("-") - (baseExcelFile.LastIndexOf(@"\") + 3));
+
+
+            if ("CA" != fileName.ToUpper())
+            {
+                CloseWithComment();
+            }
+
+
+            try
+            {
+                if (0 > Int32.Parse(fileNumber))
+                {
+                    CloseWithComment();
+                }
+            }
+            catch
+            {
+                CloseWithComment();
+            }
+
+
+            return;
         }
         static string[] ReadValuesFromExcel(string excelFilesPath)
         {
