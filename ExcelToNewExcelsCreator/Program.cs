@@ -14,12 +14,13 @@ namespace ExcelToNewExcelsCreator
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
             //Paths
-            string baseFilesDirectoryPath = GetPathToDirectory_Files() + @"\BaseFiles";
+            string baseFilesDirectoryPath = GetPathToDirectory_Files();
             string newFilesDirectoryPath = baseFilesDirectoryPath + @"\NewFiles";
+            baseFilesDirectoryPath += @"\BaseFiles";
 
             //Check if files exist
             string baseExcelFile = FindFileWithExtension(baseFilesDirectoryPath, "*.xlsx");
-            CheckFileName(baseExcelFile);
+            var a = CheckFileName(baseExcelFile);
 
             // Ask User
             Console.WriteLine("Write below how many new files create");
@@ -214,7 +215,7 @@ namespace ExcelToNewExcelsCreator
 
 
         ////Poważne zmiany od tąd////
-        static void CheckFileName(string baseExcelFile)
+        static string [] CheckFileName(string baseExcelFile)
         {
             static void CloseWithComment() 
             {
@@ -257,8 +258,7 @@ namespace ExcelToNewExcelsCreator
                 CloseWithComment();
             }
 
-
-            return;
+            return new string [] {fileName, fileNumber };
         }
         static string[] ReadValuesFromExcel(string excelFilesPath)
         {
