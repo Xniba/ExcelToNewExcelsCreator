@@ -9,7 +9,7 @@ namespace ExcelToNewExcelsCreator
     internal class Program
     {
         static void Main(string[] args)
-        {
+        { 
             //Package licence
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
@@ -20,7 +20,7 @@ namespace ExcelToNewExcelsCreator
 
             //Check if files exist
             string baseExcelFile = FindFileWithExtension(baseFilesDirectoryPath, "*.xlsx");
-            var a = CheckFileName(baseExcelFile);
+            CheckFileName(baseExcelFile);
 
             // Ask User
             Console.WriteLine("Write below how many new files create");
@@ -40,7 +40,9 @@ namespace ExcelToNewExcelsCreator
 
             // Create new directory for files
             CreateNewDirectory(newFilesDirectoryPath);
-            string[] valuesR​readFromExcel = ReadValuesFromExcel(baseExcelFile);
+
+            //!!!!!!!!!Odpalamy maszyne
+            PreaperingValuesForNewFiles(baseExcelFile, newFilesDirectoryPath, amountOfFiles, carriersPerDay);
 
 
             //Od tąd kontynuować
@@ -217,6 +219,9 @@ namespace ExcelToNewExcelsCreator
         ////Poważne zmiany od tąd////
         static string [] CheckFileName(string baseExcelFile)
         {
+            int amountOfLetters = 2;
+            int amountOfNumbers = 3;
+
             static void CloseWithComment() 
             {
                 Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
@@ -229,36 +234,47 @@ namespace ExcelToNewExcelsCreator
                 CloseApp();
             }
 
-            string fileName =
-                baseExcelFile.Substring(
-                baseExcelFile.LastIndexOf(@"\") + 1,
-                2);
-
-            string fileNumber =
-                baseExcelFile.Substring(
-                baseExcelFile.LastIndexOf(@"\") + 3,
-                baseExcelFile.LastIndexOf("-") - (baseExcelFile.LastIndexOf(@"\") + 3));
-
-
-            if ("CA" != fileName.ToUpper())
-            {
-                CloseWithComment();
-            }
-
 
             try
             {
-                if (0 > Int32.Parse(fileNumber))
+                string fullFileName =
+                    baseExcelFile.Substring(
+                    baseExcelFile.LastIndexOf(@"\") + 1);
+
+
+                string fileLetters = fullFileName.Substring(0, amountOfLetters);
+                string fileNumber = fullFileName.Substring(amountOfLetters, amountOfNumbers);
+                string fileRestOfName = fullFileName.Substring(amountOfLetters + amountOfNumbers);
+
+                if ("CA" != fileLetters.ToUpper())
                 {
                     CloseWithComment();
                 }
+
+
+                try
+                {
+                    if (0 > Int32.Parse(fileNumber))
+                    {
+                        CloseWithComment();
+                    }
+                }
+                catch
+                {
+                    Debug.WriteLine("Error in CheckFileName -> Int32.Parse(fileNumber)");
+                    CloseWithComment();
+                }
+
+                return new string[] { fileLetters, fileNumber, fileRestOfName };
+
             }
             catch
             {
+                Debug.WriteLine("Error in CheckFileName -> try");
                 CloseWithComment();
             }
 
-            return new string [] {fileName, fileNumber };
+            return new string[] { };
         }
         static string[] ReadValuesFromExcel(string excelFilesPath)
         {
@@ -286,10 +302,67 @@ namespace ExcelToNewExcelsCreator
             return valuesFromExcel.ToArray();
         }
 
+
         //Od tąd kontynuować
-        static void PreaperingValuesForNewFiles(string[] valuesFromExcel, int amounOfNewExcelFiles)
+        static void PreaperingValuesForNewFiles(string baseExcelFile, string newFilesDirectoryPath, int amounOfNewExcelFiles, int carriersPerDay)
+        {
+            string[] valuesR​eadFromExcel = ReadValuesFromExcel(baseExcelFile);
+            string[] fileNameAndNumber = CheckFileName(baseExcelFile);
+
+            // Name for new file
+            for (int i = 0; i < amounOfNewExcelFiles; i++)
+            {
+                string nameOfNewFile = fileNameAndNumber[0] + fileNameAndNumber[1] + i;
+                Console.WriteLine(nameOfNewFile);
+            }
+
+
+
+        }
+
+
+
+
+
+        //Dodawanie metod
+        static string[] ChangeName(string baseExcelFile, int amountOfNewFiles)
         {
 
+            string[] fileNameAndNumber = CheckFileName(baseExcelFile);
+            int lenghtOfNumber = fileNameAndNumber[1].Length;
+
+            for(int i=0; i < amountOfNewFiles; i++)
+            {
+
+            }
+
+
+            // 1. Check file name
+            //
+            //Ważne sprawdzanie nazwy pliku pierwszego
+            try
+            {
+                fileName.Substring(fileName.IndexOf("-") - 1, fileName.Length - fileName.IndexOf("-") + 1);
+            }
+            catch
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine(
+                    "Error" + "\n" +
+                    "Check name of oryginal file. Should start like \"CAxxxx - ...\"" + "\n" +
+                    "For example: \"CA0001 - RoDipE carrier precommissioning Check list v1.8\" "
+                    );
+                Console.ResetColor();
+
+                //Open excel -> WorkSheet -> read one value and write to variable
+                value[0] = new ExcelPackage(filePath).Workbook.Worksheets[2].GetValue(cellsPositionsXY[0, 0], cellsPositionsXY[0, 1]).ToString();
+                fileName = $"CA{value[0]} - {fileName}";
+
+                newFilePath = newDirectoryPath + $@"\{fileName}";
+                Console.WriteLine("Changing name of first file on: " + fileName);
+            }
+
+            return new string[] { };
         }
         static void ChangingFiles(int carriersPerDay, int amountOfFiles, string directoryPath, string newDirectoryPath)
         {
