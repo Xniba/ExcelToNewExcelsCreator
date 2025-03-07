@@ -1,15 +1,28 @@
 ﻿using OfficeOpenXml;
+using OfficeOpenXml.Style;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.CompilerServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ExcelToNewExcelsCreator
 {
 
     internal class Program
     {
+        static int[,] WitchCellsToChange()
+        {
+            int[,] cellPostitionXY = {
+                { 6, 3  },  //Device_number
+                { 7, 11 },  //IP (last octet) - Device_1
+                { 7, 13 },  //IP (last octet) - Device_2
+                { 6, 23 }   //Date
+            };
+
+            return cellPostitionXY;
+        }
         static void Main(string[] args)
-        { 
+        {
             //Package licence
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
@@ -20,12 +33,14 @@ namespace ExcelToNewExcelsCreator
 
             //Check if files exist
             string baseExcelFile = FindFileWithExtension(baseFilesDirectoryPath, "*.xlsx");
-            CheckFileName(baseExcelFile);
+            string[] fileNameAndNumber = CheckFileName(baseExcelFile);
 
+            CreateNewDirectory(newFilesDirectoryPath);
+            
             // Ask User
-            Console.WriteLine("Write below how many new files create");
-            int amountOfFiles = AskUserAboutAmount();
-            if (amountOfFiles == 0)
+            Console.WriteLine("Write below how many NEW files create");
+            int amountOfNewFiles = AskUserAboutAmount();
+            if (amountOfNewFiles == 0)
             {
                 Console.WriteLine("You chose 0 new files");
                 CloseApp();
@@ -38,17 +53,27 @@ namespace ExcelToNewExcelsCreator
                 Console.WriteLine("You chose zero, all files with same date");
             }
 
-            // Create new directory for files
-            CreateNewDirectory(newFilesDirectoryPath);
-
-            //!!!!!!!!!Odpalamy maszyne
-            PreaperingValuesForNewFiles(baseExcelFile, newFilesDirectoryPath, amountOfFiles, carriersPerDay);
-
-
-            //Od tąd kontynuować
-            ChangingFiles(carriersPerDay, amountOfFiles, baseFilesDirectoryPath, newFilesDirectoryPath);
+            //Machina rusza
+            string[] valuesR​eadeFromExcel = ReadValuesFromExcel(baseExcelFile);
+            string[] newFilesPath = PreaperNamesForNewFiles(fileNameAndNumber, amountOfNewFiles);
+            fileNameAndNumber = null;   //Clean memmory?
 
 
+
+            // Czy zwinąć to w jedno i dodać jeszcze czytanie przed?
+            PrepareAllData(valuesReadeFromExcel, amountOfNewFiles, carriersPerDay);
+            string valuFileNumber = valuesReadeFromExcel[0];
+            var a = ChangeNumber(valuFileNumber, amountOfNewFiles); 
+
+            string valueIpAddress_1 = valuesReadeFromExcel[1];
+            var b = ChangeIpAddress(valueIpAddress_1, amountOfNewFiles);
+
+            string valueIpAddress_2 = valuesReadeFromExcel[2];
+            var c = ChangeIpAddress(valueIpAddress_2, amountOfNewFiles);
+
+            string valueDate = valuesReadeFromExcel[3];
+            var d = ChangeDate(valueDate, amountOfNewFiles, carriersPerDay);
+            // Czy zwinąć to w jedno i dodać jeszcze czytanie przed?
 
 
             // 7. Info: where files are
@@ -86,17 +111,6 @@ namespace ExcelToNewExcelsCreator
 
             Console.WriteLine(message);
             Console.ResetColor();
-        }
-        static int[,] WitchCellsToChange()
-        {
-            int[,] cellPostitionXY = {
-                { 6, 3  },  //Device_number
-                { 7, 11 },  //IP (last octet) - Device_1
-                { 7, 13 },  //IP (last octet) - Device_2
-                { 6, 23 }   //Date
-            };
-
-            return cellPostitionXY;
         }
         static void CreateNewDirectory(string newDirectoryPath)
         {
@@ -214,9 +228,139 @@ namespace ExcelToNewExcelsCreator
             return 0;
         }
 
+        //ułomna
+        static void PrepareAllData(string[] valuesReadeFromExcel, int amountOfNewFiles, int carriersPerDay)
+        {
+
+        }
+        static string[] PreaperNamesForNewFiles(string[] fileNameAndNumber, int amountOfNewFiles)
+        {
+            int localNumber = 0;
+            try
+            {
+                localNumber = Int32.Parse(fileNameAndNumber[1]);
+                if (0 > localNumber)
+                {
+                    Console.WriteLine("Number will be negative");
+                    CloseApp();
+                }
+            }
+            catch
+            {
+                Debug.WriteLine("Error in ChangeNumber -> Int32.Parse(orginNumber)");
+                CloseApp();
+            }
 
 
-        ////Poważne zmiany od tąd////
+            int orginalNameNumberLenght = fileNameAndNumber[1].Length;
+            string[] newNameForFiles = new string[amountOfNewFiles];
+            for (int i = 0; i < amountOfNewFiles; i++)
+            {
+                newNameForFiles[i] = (localNumber + (i + 1)).ToString();
+                newNameForFiles[i] =
+                    new string('0', orginalNameNumberLenght - newNameForFiles[i].Length) +
+                    newNameForFiles[i] +
+                    fileNameAndNumber[2];
+            }
+
+            return newNameForFiles;
+        }
+        static string[] ChangeIpAddress(string orginIpAddress, int amountOfNewFiles)
+        {
+            int localIpAddress = 0;
+            try
+            {
+                localIpAddress = Byte.Parse(orginIpAddress);
+                if (0 > (255 - (localIpAddress + amountOfNewFiles)))
+                {
+                    Console.WriteLine("Last occted of IP Addres will be bigger then 255");
+                    CloseApp();
+                }
+            }
+            catch
+            {
+                Debug.WriteLine("Error in ChangeIpAddress -> Byte.Parse(orginIpAddress)");
+                CloseApp();
+            }
+
+            
+            string[] newIpAddress = new string[amountOfNewFiles];
+            for (int i=0; i < amountOfNewFiles; i++)
+            {
+                newIpAddress[i] = (localIpAddress + (i+1)).ToString();
+            }
+
+            return newIpAddress;
+        }
+        static string[] ChangeNumber(string orginNumber, int amountOfNewFiles)
+        {
+            int localNumber = 0;
+            try
+            {
+                localNumber = Int32.Parse(orginNumber);
+                if (0 > localNumber)
+                {
+                    Console.WriteLine("Number will be negative");
+                    CloseApp();
+                }
+            }
+            catch
+            {
+                Debug.WriteLine("Error in ChangeNumber -> Int32.Parse(orginNumber)");
+                CloseApp();
+            }
+
+
+            int orginalNumberLenght = orginNumber.Length;
+            string[] newNumber = new string[amountOfNewFiles];
+            for (int i = 0; i < amountOfNewFiles; i++)
+            {
+                newNumber[i] = (localNumber + (i + 1)).ToString();
+                newNumber[i] = new string('0', orginalNumberLenght - newNumber[i].Length) + newNumber[i];
+            }
+
+            return newNumber;
+        }
+        static string[] ChangeDate(string orginDate, int amountOfNewFiles, int carriersPerDay)
+        {
+            DateTime localDate = default; // DateTime.Today;
+
+            try
+            {
+                DateTime.TryParse(orginDate, out localDate);
+            }
+            catch
+            {
+                Debug.WriteLine("Error in ChangeDate -> DateTime.TryParse(orginDate, localDate)");
+                CloseApp();
+            }
+
+            string[] newDate = new string[amountOfNewFiles];
+            for (int i=0; i < amountOfNewFiles; i++)
+            {
+                if ((i+1) % carriersPerDay == 0)
+                {
+                    localDate = localDate.AddDays(1);
+                }
+
+                if (DayOfWeek.Saturday == localDate.DayOfWeek)
+                {
+                    localDate = localDate.AddDays(2);
+                }
+                else if (DayOfWeek.Sunday == localDate.DayOfWeek)   
+                {
+                    localDate = localDate.AddDays(1);
+                }
+
+                newDate[i] = localDate.ToString("d");
+            }
+
+
+            return newDate;
+        }
+
+
+        //checkFileName
         static string [] CheckFileName(string baseExcelFile)
         {
             int amountOfLetters = 2;
@@ -280,20 +424,21 @@ namespace ExcelToNewExcelsCreator
         {
             Queue<string> valuesFromExcel = new Queue<string>();
             int[,] cellsPositionsXY = WitchCellsToChange();
+            int amountOfValueToRead = cellsPositionsXY.Length / 2;
 
             //open excel file
             var excelWorksheet = new ExcelPackage(excelFilesPath).Workbook.Worksheets[2];
-            for (int i = 0; i < cellsPositionsXY.Length / 2; i++)
+            for (int i = 0; i < amountOfValueToRead; i++)
             {
                 valuesFromExcel.Enqueue(
-                    excelWorksheet.GetValue(cellsPositionsXY[i, 0], cellsPositionsXY[i, 1])
+                    excelWorksheet.GetValue(cellsPositionsXY[i, 1], cellsPositionsXY[i, 0])
                     .ToString()
                     );
             }
             //close excel file
             excelWorksheet.Dispose();
 
-            if (valuesFromExcel.Count != 4)
+            if (valuesFromExcel.Count != amountOfValueToRead)
             {
                 Console.WriteLine("Error: not enough values in excel file");
                 CloseApp();
@@ -303,67 +448,6 @@ namespace ExcelToNewExcelsCreator
         }
 
 
-        //Od tąd kontynuować
-        static void PreaperingValuesForNewFiles(string baseExcelFile, string newFilesDirectoryPath, int amounOfNewExcelFiles, int carriersPerDay)
-        {
-            string[] valuesR​eadFromExcel = ReadValuesFromExcel(baseExcelFile);
-            string[] fileNameAndNumber = CheckFileName(baseExcelFile);
-
-            // Name for new file
-            for (int i = 0; i < amounOfNewExcelFiles; i++)
-            {
-                string nameOfNewFile = fileNameAndNumber[0] + fileNameAndNumber[1] + i;
-                Console.WriteLine(nameOfNewFile);
-            }
-
-
-
-        }
-
-
-
-
-
-        //Dodawanie metod
-        static string[] ChangeName(string baseExcelFile, int amountOfNewFiles)
-        {
-
-            string[] fileNameAndNumber = CheckFileName(baseExcelFile);
-            int lenghtOfNumber = fileNameAndNumber[1].Length;
-
-            for(int i=0; i < amountOfNewFiles; i++)
-            {
-
-            }
-
-
-            // 1. Check file name
-            //
-            //Ważne sprawdzanie nazwy pliku pierwszego
-            try
-            {
-                fileName.Substring(fileName.IndexOf("-") - 1, fileName.Length - fileName.IndexOf("-") + 1);
-            }
-            catch
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine(
-                    "Error" + "\n" +
-                    "Check name of oryginal file. Should start like \"CAxxxx - ...\"" + "\n" +
-                    "For example: \"CA0001 - RoDipE carrier precommissioning Check list v1.8\" "
-                    );
-                Console.ResetColor();
-
-                //Open excel -> WorkSheet -> read one value and write to variable
-                value[0] = new ExcelPackage(filePath).Workbook.Worksheets[2].GetValue(cellsPositionsXY[0, 0], cellsPositionsXY[0, 1]).ToString();
-                fileName = $"CA{value[0]} - {fileName}";
-
-                newFilePath = newDirectoryPath + $@"\{fileName}";
-                Console.WriteLine("Changing name of first file on: " + fileName);
-            }
-
-            return new string[] { };
-        }
         static void ChangingFiles(int carriersPerDay, int amountOfFiles, string directoryPath, string newDirectoryPath)
         {
             int[,] cellsPositionsXY = WitchCellsToChange();
@@ -465,7 +549,6 @@ namespace ExcelToNewExcelsCreator
                 {
                     date = date.AddDays(1);
                 }
-
                 if (6 == (int)date.DayOfWeek)       //if Saturday
                 {
                     date = date.AddDays(2);
