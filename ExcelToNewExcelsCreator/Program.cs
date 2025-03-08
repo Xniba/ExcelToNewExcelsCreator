@@ -1,5 +1,6 @@
 ﻿using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.CompilerServices;
@@ -10,16 +11,26 @@ namespace ExcelToNewExcelsCreator
 
     internal class Program
     {
-        static int[,] WitchCellsToChange()
+        /// <summary>
+        /// ///////Sprawdzić która jest lepsza, statyczna tablica int tylko odczyt czy klasa
+        /// </summary>
+        private static readonly int[,] cellPositionXY =
         {
-            int[,] cellPostitionXY = {
+                { 6, 3  },  //Device_number
+                { 7, 11 },  //IP (last octet) - Device_1
+                { 7, 13 },  //IP (last octet) - Device_2
+                { 6, 23 }   //Date
+        };
+        public static class CellPositionXY_Class
+        {
+            private static int[,] cellPostitionXY = {
                 { 6, 3  },  //Device_number
                 { 7, 11 },  //IP (last octet) - Device_1
                 { 7, 13 },  //IP (last octet) - Device_2
                 { 6, 23 }   //Date
             };
 
-            return cellPostitionXY;
+            public static int[,] Matrix => cellPostitionXY;
         }
         static void Main(string[] args)
         {
@@ -31,12 +42,19 @@ namespace ExcelToNewExcelsCreator
             string newFilesDirectoryPath = baseFilesDirectoryPath + @"\NewFiles";
             baseFilesDirectoryPath += @"\BaseFiles";
 
-            //Check if files exist
+            //Check if files exist, name correct, can read value form excel
             string baseExcelFile = FindFileWithExtension(baseFilesDirectoryPath, "*.xlsx");
-            string[] fileNameAndNumber = CheckFileName(baseExcelFile);
+            string[] fileNameIn3Parts = ReturnFileNameIn3PartsIfCorrect(baseExcelFile);
+            string[] valuesR​eadeFromExcel = ReadValuesFromExcel(baseExcelFile);
 
             CreateNewDirectory(newFilesDirectoryPath);
-            
+            try
+            {
+                File.Copy(baseExcelFile, @$"{newFilesDirectoryPath}\{fileNameIn3Parts[0]}{fileNameIn3Parts[1]}{fileNameIn3Parts[2]}");
+            }
+            catch { CloseApp(); }
+
+
             // Ask User
             Console.WriteLine("Write below how many NEW files create");
             int amountOfNewFiles = AskUserAboutAmount();
@@ -45,6 +63,7 @@ namespace ExcelToNewExcelsCreator
                 Console.WriteLine("You chose 0 new files");
                 CloseApp();
             }
+            Console.WriteLine();
 
             Console.WriteLine("Write below how many carriers per day");
             int carriersPerDay = AskUserAboutAmount();
@@ -52,36 +71,58 @@ namespace ExcelToNewExcelsCreator
             {
                 Console.WriteLine("You chose zero, all files with same date");
             }
+            Console.WriteLine();
 
-            //Machina rusza
-            string[] valuesR​eadeFromExcel = ReadValuesFromExcel(baseExcelFile);
-            string[] newFilesPath = PreaperNamesForNewFiles(fileNameAndNumber, amountOfNewFiles);
-            fileNameAndNumber = null;   //Clean memmory?
-
+            //to poniżej w funkcji tworzącej pliki excel
+            string[] newExcelFilesPath = PreaperExcelFileName(fileNameIn3Parts, newFilesDirectoryPath, amountOfNewFiles);
 
 
-            // Czy zwinąć to w jedno i dodać jeszcze czytanie przed?
-            PrepareAllData(valuesReadeFromExcel, amountOfNewFiles, carriersPerDay);
-            string valuFileNumber = valuesReadeFromExcel[0];
-            var a = ChangeNumber(valuFileNumber, amountOfNewFiles); 
-
-            string valueIpAddress_1 = valuesReadeFromExcel[1];
-            var b = ChangeIpAddress(valueIpAddress_1, amountOfNewFiles);
-
-            string valueIpAddress_2 = valuesReadeFromExcel[2];
-            var c = ChangeIpAddress(valueIpAddress_2, amountOfNewFiles);
-
-            string valueDate = valuesReadeFromExcel[3];
-            var d = ChangeDate(valueDate, amountOfNewFiles, carriersPerDay);
-            // Czy zwinąć to w jedno i dodać jeszcze czytanie przed?
+            CreateNewExcelFiles(baseExcelFile, newExcelFilesPath);
+            ChangeValuesInNewExcelFiles(newExcelFilesPath, valuesReadeFromExcel, carriersPerDay);
 
 
             // 7. Info: where files are
-            Console.WriteLine($"\nFiles saved in folder: {newFilesDirectoryPath}");
+            Console.WriteLine($"\nAll new files saved in directory:" +
+                $"\n{newFilesDirectoryPath}");
             Console.WriteLine("Press any key to close the window");
             Console.ReadKey();
 
             return;
+        }
+
+        static void ChangeValuesInNewExcelFiles(string[] newExcelFilesPath, string[] valuesReadeFromExcel, int carriersPerDay)
+        {    //Copy Excel to new diercotry
+
+            int amountOfNewFiles = newExcelFilesPath.Length;
+            string[] valueFileNumber = ChangeNumber(valuesReadeFromExcel[0], amountOfNewFiles);
+            string[] valueIpAddress_1 = ChangeIpAddress(valuesReadeFromExcel[1], amountOfNewFiles);
+            string[] valueIpAddress_2 = ChangeIpAddress(valuesReadeFromExcel[2], amountOfNewFiles);
+            string[] valueDate = ChangeDate(valuesReadeFromExcel[3], amountOfNewFiles, carriersPerDay);
+
+
+            try
+            {
+                for (int i = 0; i < amountOfNewFiles; i++)
+                {
+                    ExcelPackage localExcel = new ExcelPackage(newExcelFilesPath[i]);
+                    ExcelWorksheet localWorksheets = localExcel.Workbook.Worksheets[2];
+
+                    localWorksheets.Cells[cellPositionXY[0, 1], cellPositionXY[0, 0]].Value = valueFileNumber[i];
+                    localWorksheets.Cells[cellPositionXY[1, 1], cellPositionXY[1, 0]].Value = valueIpAddress_1[i];
+                    localWorksheets.Cells[cellPositionXY[2, 1], cellPositionXY[2, 0]].Value = valueIpAddress_2[i];
+                    localWorksheets.Cells[cellPositionXY[3, 1], cellPositionXY[3, 0]].Value = valueDate[i];
+
+
+                    File.WriteAllBytes(newExcelFilesPath[i], localExcel.GetAsByteArray());
+                    localExcel.Dispose();
+                    Console.WriteLine($"{i + 1} new file created");
+                }
+            }
+            catch 
+            { 
+                CloseApp(); 
+            }
+
         }
         enum ColorEnumMessage
         {
@@ -138,7 +179,7 @@ namespace ExcelToNewExcelsCreator
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Can't delete or create new directory");
-                Console.WriteLine($"Close all files from directory:\n + {newDirectoryPath}");
+                Console.WriteLine($"Close all files from directory:\n" + newDirectoryPath);
                 Console.ResetColor();
 
                 CloseApp();
@@ -167,20 +208,17 @@ namespace ExcelToNewExcelsCreator
                 Console.WriteLine("File not found, check directory:\n" + directoryPath);
                 CloseApp();
             }
-            else
-            {
-                for (int i = 0; i < path.Length; i++)
-                {
-                    if ('~' != path[i][0]) //Checking if ther is temporary file"~"
-                    {
-                        return path[i];
-                    }
-                }
 
-                Console.WriteLine("Valid file not found, check directory:\n" + directoryPath);
-                CloseApp();
+            for (int i = 0; i < path.Length; i++)
+            {
+                if ('~' != path[i][0])
+                {
+                    return path[i];
+                }
             }
 
+            Console.WriteLine("Valid file not found, check directory:\n" + directoryPath);
+            CloseApp();
             return "";
         }
         static string GetPathToDirectory_Files()
@@ -227,18 +265,145 @@ namespace ExcelToNewExcelsCreator
 
             return 0;
         }
-
-        //ułomna
-        static void PrepareAllData(string[] valuesReadeFromExcel, int amountOfNewFiles, int carriersPerDay)
+        static string[] ReturnFileNameIn3PartsIfCorrect(string baseExcelFile)
         {
+            if (baseExcelFile == "")
+            {
+                Console.WriteLine("Excel file not found");
+                CloseApp();
+            }
 
+            string fullFileName = "";
+            try
+            {
+                fullFileName =
+                baseExcelFile.Substring(
+                baseExcelFile.LastIndexOf(@"\") + 1);
+            }
+            catch
+            {
+                Debug.WriteLine("Error in CheckFileName -> try");
+                CloseApp();
+            }
+
+            int amountOfLetters = 0;
+            if (Char.IsLetter(fullFileName[amountOfLetters]))
+            {
+                amountOfLetters++;
+            }
+            else
+            {
+                Debug.WriteLine("Error in CheckFileName -> First char isn't letter");
+                Console.WriteLine("First char isn't letter");
+                Internal_CloseWithComment();
+            }
+
+            while (Char.IsLetter(fullFileName[amountOfLetters]))
+            {
+                amountOfLetters++;
+            }
+
+            string fileLetters = "";
+            string fileNumber = ""; ///// usunąć spacje
+            string fileDescription = "";
+            try
+            {
+                fileLetters = fullFileName.Substring(0, amountOfLetters);
+                fileNumber = fullFileName
+                    .Substring(amountOfLetters, (fullFileName.IndexOf("-")-2))
+                    .Trim();
+                fileDescription = " " + fullFileName.Substring(fullFileName.IndexOf("-"));
+            }
+            catch
+            {
+                Debug.WriteLine("Problem with substrings");
+                Internal_CloseWithComment();
+            }
+
+            try
+            {
+                if (0 > Int32.Parse(fileNumber))
+                {
+                    Internal_CloseWithComment();
+                }
+            }
+            catch
+            {
+                Debug.WriteLine("Error in CheckFileName -> Int32.Parse(fileNumber)");
+                Internal_CloseWithComment();
+            }
+
+            return new string[] { fileLetters, fileNumber, fileDescription };
+
+            static void Internal_CloseWithComment()
+            {
+                Console.WriteLine("Check name of base excel file. It should start as follow 'CAxxx'");
+                CloseApp();
+            }
         }
-        static string[] PreaperNamesForNewFiles(string[] fileNameAndNumber, int amountOfNewFiles)
+        static string[] ReadValuesFromExcel(string excelFilesPath)
+        {
+            Queue<string> valuesFromExcel = new Queue<string>();
+            int[,] cellsPositionsXY = cellPositionXY;
+            int amountOfValueToRead = cellsPositionsXY.Length / 2;
+
+            try
+            {
+                ExcelWorksheet excelWorksheet = new ExcelPackage(excelFilesPath).Workbook.Worksheets[2];
+
+                for (int i = 0; i < amountOfValueToRead; i++)
+                {
+                    valuesFromExcel.Enqueue(
+                        excelWorksheet.GetValue(cellsPositionsXY[i, 1], cellsPositionsXY[i, 0])
+                        .ToString()
+                        );
+                }
+
+                excelWorksheet.Dispose();
+            }
+            catch
+            {
+                Debug.WriteLine("Can't open worsheet nr.2");
+                CloseApp();
+            }
+
+
+            if (valuesFromExcel.Count != amountOfValueToRead)
+            {
+                Console.WriteLine("Error: not enough values in excel file");
+                CloseApp();
+            }
+
+            return valuesFromExcel.ToArray();
+        }
+
+     
+
+        //Prace trwają
+        static void CreateNewExcelFiles(string baseExcelFile, string[] newExelFilesPath)
+        {
+            int amountOfNewFiles = newExelFilesPath.Length;
+            try
+            {
+                for (int i = 0; i < amountOfNewFiles; i++)
+                {
+                    File.Copy(baseExcelFile, newExelFilesPath[i]);
+                }
+            }
+            catch 
+            { 
+                CloseApp();
+            }           
+            return;
+        }
+
+        //Nowe
+        static string[] PreaperExcelFileName(string[] fileNameIn3Parts, string newFilesDirectoryPath, int amountOfNewFiles)
         {
             int localNumber = 0;
             try
             {
-                localNumber = Int32.Parse(fileNameAndNumber[1]);
+                localNumber = Int32.Parse(fileNameIn3Parts[1]);
                 if (0 > localNumber)
                 {
                     Console.WriteLine("Number will be negative");
@@ -251,19 +416,20 @@ namespace ExcelToNewExcelsCreator
                 CloseApp();
             }
 
-
-            int orginalNameNumberLenght = fileNameAndNumber[1].Length;
-            string[] newNameForFiles = new string[amountOfNewFiles];
+            int orginalNameNumberLenght = fileNameIn3Parts[1].Length;
+            string[] newExcelFilesPath = new string[amountOfNewFiles];
             for (int i = 0; i < amountOfNewFiles; i++)
             {
-                newNameForFiles[i] = (localNumber + (i + 1)).ToString();
-                newNameForFiles[i] =
-                    new string('0', orginalNameNumberLenght - newNameForFiles[i].Length) +
-                    newNameForFiles[i] +
-                    fileNameAndNumber[2];
+                newExcelFilesPath[i] = (localNumber + (i + 1)).ToString();
+                newExcelFilesPath[i] =
+                    newFilesDirectoryPath + @"\" +
+                    fileNameIn3Parts[0] +
+                    new string('0', orginalNameNumberLenght - newExcelFilesPath[i].Length) +
+                    newExcelFilesPath[i] +
+                    fileNameIn3Parts[2];
             }
 
-            return newNameForFiles;
+            return newExcelFilesPath;
         }
         static string[] ChangeIpAddress(string orginIpAddress, int amountOfNewFiles)
         {
@@ -360,97 +526,12 @@ namespace ExcelToNewExcelsCreator
         }
 
 
-        //checkFileName
-        static string [] CheckFileName(string baseExcelFile)
-        {
-            int amountOfLetters = 2;
-            int amountOfNumbers = 3;
-
-            static void CloseWithComment() 
-            {
-                Console.WriteLine("Check name of base excel file. It shuld start as follow 'CAxxx'");
-                CloseApp();
-            }
-
-            if (baseExcelFile == "")
-            {
-                Console.WriteLine("Excel file not found");
-                CloseApp();
-            }
-
-
-            try
-            {
-                string fullFileName =
-                    baseExcelFile.Substring(
-                    baseExcelFile.LastIndexOf(@"\") + 1);
-
-
-                string fileLetters = fullFileName.Substring(0, amountOfLetters);
-                string fileNumber = fullFileName.Substring(amountOfLetters, amountOfNumbers);
-                string fileRestOfName = fullFileName.Substring(amountOfLetters + amountOfNumbers);
-
-                if ("CA" != fileLetters.ToUpper())
-                {
-                    CloseWithComment();
-                }
-
-
-                try
-                {
-                    if (0 > Int32.Parse(fileNumber))
-                    {
-                        CloseWithComment();
-                    }
-                }
-                catch
-                {
-                    Debug.WriteLine("Error in CheckFileName -> Int32.Parse(fileNumber)");
-                    CloseWithComment();
-                }
-
-                return new string[] { fileLetters, fileNumber, fileRestOfName };
-
-            }
-            catch
-            {
-                Debug.WriteLine("Error in CheckFileName -> try");
-                CloseWithComment();
-            }
-
-            return new string[] { };
-        }
-        static string[] ReadValuesFromExcel(string excelFilesPath)
-        {
-            Queue<string> valuesFromExcel = new Queue<string>();
-            int[,] cellsPositionsXY = WitchCellsToChange();
-            int amountOfValueToRead = cellsPositionsXY.Length / 2;
-
-            //open excel file
-            var excelWorksheet = new ExcelPackage(excelFilesPath).Workbook.Worksheets[2];
-            for (int i = 0; i < amountOfValueToRead; i++)
-            {
-                valuesFromExcel.Enqueue(
-                    excelWorksheet.GetValue(cellsPositionsXY[i, 1], cellsPositionsXY[i, 0])
-                    .ToString()
-                    );
-            }
-            //close excel file
-            excelWorksheet.Dispose();
-
-            if (valuesFromExcel.Count != amountOfValueToRead)
-            {
-                Console.WriteLine("Error: not enough values in excel file");
-                CloseApp();
-            }
-
-            return valuesFromExcel.ToArray();
-        }
-
-
+        //
+        //
+        //Funkja matka 
         static void ChangingFiles(int carriersPerDay, int amountOfFiles, string directoryPath, string newDirectoryPath)
         {
-            int[,] cellsPositionsXY = WitchCellsToChange();
+            int[,] cellsPositionsXY = cellPositionXY;
             string [] value = null; ;
             //Variable without values
             string[] valuesFromExcel = ReadValuesFromExcel(
