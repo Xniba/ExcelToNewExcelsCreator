@@ -149,7 +149,7 @@ namespace ExcelToNewExcelsCreator
         }
         static string FindFileWithExtension(string directoryPath, string extension)
         {
-            string[] path = null;
+            string[] path = Array.Empty<string>();
             try
             {
                 path = Directory.GetFiles(directoryPath, extension);
@@ -183,7 +183,7 @@ namespace ExcelToNewExcelsCreator
 
             Console.WriteLine("Valid file not found, check directory:\n" + directoryPath);
             CloseApp();
-            return null;
+            return Array.Empty<string>();
         }
         static void CreateNewDirectory(string newDirectoryPath)
         {
