@@ -71,7 +71,7 @@ namespace ExcelToNewExcelsCreator
 
             Console.WriteLine($"\nAll new files saved in directory:" +
                 $"\n{newFilesDirectoryPath}"+
-                "Press any key to close the window");
+                "\n\nPress any key to close the window...");
             Console.ReadKey();
 
             return;
